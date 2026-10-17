@@ -63,19 +63,13 @@ if (versionCheck.status !== 'ok') {
   console.error(`[tandoor-mcp] ${versionCheck.level === 'warning' ? 'WARNING' : 'NOTE'}: ${versionCheck.detail}`);
 }
 
-const server = new McpServer(
-  {
-    name: pkg.name,
-    version: pkg.version,
-  },
-  {
-    instructions: buildInstructions(versionCheck, stashCfgAtBoot, {
-      mode: transportMode,
-      bind: httpCfg ? `${httpCfg.host}:${httpCfg.port}` : undefined,
-      requireAuth: httpCfg?.requireAuth ?? false,
-    }),
-  }
-);
+// Build a fresh MCP server for every stateless HTTP request.
+// Stdio mode retains one connected server for the process lifetime.
+const instructions = buildInstructions(versionCheck, stashCfgAtBoot, {
+  mode: transportMode,
+  bind: httpCfg ? `${httpCfg.host}:${httpCfg.port}` : undefined,
+  requireAuth: httpCfg?.requireAuth ?? false,
+});
 
 // Tool-group profile. Every MCP client loads every tool schema into context
 // on `list_tools`, so ~135 tools × ~400 tokens each is a real cost for small
@@ -92,7 +86,14 @@ function resolveProfile(raw: string | undefined): 'core' | 'basic' | 'full' {
 }
 const profile = resolveProfile(process.env.TANDOOR_MCP_PROFILE);
 
-registerAllTools(server, tandoorClient, { profile, pkg, versionCheck });
+function createMcpServer(): McpServer {
+  const server = new McpServer(
+    { name: pkg.name, version: pkg.version },
+    { instructions },
+  );
+  registerAllTools(server, tandoorClient, { profile, pkg, versionCheck });
+  return server;
+}
 
 async function main() {
   const stashLine = stashCfgAtBoot.enabled
@@ -100,7 +101,7 @@ async function main() {
     : 'stash=off';
 
   if (transportMode === 'http' && httpCfg) {
-    const handle = createHttpTransport(server);
+    const handle = createHttpTransport(createMcpServer);
     await handle.start();
     console.error(
       `[tandoor-mcp] ${pkg.name}@${pkg.version} on http://${httpCfg.host}:${httpCfg.port}${httpCfg.path} | auth=${httpCfg.requireAuth ? 'required' : 'disabled'} | api=${tandoorClient.getBaseUrl()} | tandoor=${versionCheck.version ?? versionCheck.status} | profile=${profile} | ${stashLine} | max_body=${httpCfg.maxBodyBytes}B | max_conns=${httpCfg.maxConnections} | drain=${httpCfg.drainMs}ms | dynamic-gating=disabled`,
@@ -114,6 +115,7 @@ async function main() {
     return;
   }
 
+  const server = createMcpServer();
   const transport = new StdioServerTransport();
   await server.connect(transport);
   console.error(

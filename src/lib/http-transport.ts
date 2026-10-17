@@ -144,11 +144,13 @@ export class FailedAuthLimiter {
   }
 }
 
-export function createHttpTransport(server: McpServer): HttpTransportHandle {
+// SDK stateless transports cannot be reused across independent requests.
+// A fresh McpServer is needed too: connect() binds it to one transport.
+export function createHttpTransport(createMcpServer: () => McpServer): HttpTransportHandle {
   const cfg = resolveHttpConfig();
-  const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
   const expected = cfg.token ?? '';
   const limiter = new FailedAuthLimiter();
+  const activeServers = new Set<McpServer>();
 
   let draining = false;
   let inFlight = 0;
@@ -160,6 +162,39 @@ export function createHttpTransport(server: McpServer): HttpTransportHandle {
       inFlight--;
       if (draining && inFlight === 0 && drainResolve) drainResolve();
     });
+  }
+
+  async function handleStatelessRequest(
+    req: IncomingMessage,
+    res: ServerResponse,
+    reqId: string,
+    body?: unknown,
+  ): Promise<void> {
+    const mcp = createMcpServer();
+    const transport = new StreamableHTTPServerTransport({ sessionIdGenerator: undefined });
+    activeServers.add(mcp);
+    let closing = false;
+    const cleanup = () => {
+      if (closing) return;
+      closing = true;
+      activeServers.delete(mcp);
+      void mcp.close().catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        httpLog(reqId, 'error', 'close_error', { msg });
+      });
+    };
+
+    // SSE responses may outlive handleRequest(); close after the HTTP
+    // response closes, including when a client disconnects.
+    res.once('close', cleanup);
+    try {
+      await mcp.connect(transport);
+      await transport.handleRequest(req, res, body);
+    } catch (err) {
+      res.off('close', cleanup);
+      cleanup();
+      throw err;
+    }
   }
 
   const httpServer: Server = createServer(async (req, res) => {
@@ -208,7 +243,7 @@ export function createHttpTransport(server: McpServer): HttpTransportHandle {
         try {
           const raw = await readBody(req, cfg.maxBodyBytes);
           const parsed = raw.length > 0 ? JSON.parse(raw) : undefined;
-          await transport.handleRequest(req, res, parsed);
+          await handleStatelessRequest(req, res, reqId, parsed);
         } catch (err) {
           if (err instanceof PayloadTooLargeError) {
             httpLog(reqId, 'warn', 'payload_too_large', { max_bytes: err.maxBytes });
@@ -222,7 +257,7 @@ export function createHttpTransport(server: McpServer): HttpTransportHandle {
       }
 
       if (req.method === 'GET' && urlPath === cfg.path) {
-        await transport.handleRequest(req, res);
+        await handleStatelessRequest(req, res, reqId);
         return;
       }
 
@@ -245,7 +280,6 @@ export function createHttpTransport(server: McpServer): HttpTransportHandle {
 
   return {
     async start() {
-      await server.connect(transport);
       await new Promise<void>((resolve) => {
         httpServer.listen(cfg.port, cfg.host, () => resolve());
       });
@@ -263,7 +297,8 @@ export function createHttpTransport(server: McpServer): HttpTransportHandle {
           t.unref();
         });
       }
-      await transport.close();
+      await Promise.allSettled([...activeServers].map((mcp) => mcp.close()));
+      activeServers.clear();
       await new Promise<void>((resolve) => {
         httpServer.close(() => resolve());
       });
