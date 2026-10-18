@@ -35,10 +35,15 @@ describe('PantryClient Tandoor inventory API', () => {
     expect(String(url)).toBe('https://recipes.example.test/api/inventory-entry/?empty=true&inventory_location_id=8&food_id=12&page_size=5');
     expect((options?.headers as Record<string,string>)['Authorization']).toBe('Bearer secret');
 
+    await client.listEntries({ empty: false, page_size: 2 });
+    expect(String(fetchMock.mock.calls[1]?.[0])).toBe(
+      'https://recipes.example.test/api/inventory-entry/?page_size=2',
+    );
+
     await client.listLocations();
-    expect(String(fetchMock.mock.calls[1]?.[0])).toBe('https://recipes.example.test/api/inventory-location/');
+    expect(String(fetchMock.mock.calls[2]?.[0])).toBe('https://recipes.example.test/api/inventory-location/');
     await client.listLogs({ entry_id: 4 });
-    expect(String(fetchMock.mock.calls[2]?.[0])).toBe('https://recipes.example.test/api/inventory-log/?entry_id=4');
+    expect(String(fetchMock.mock.calls[3]?.[0])).toBe('https://recipes.example.test/api/inventory-log/?entry_id=4');
   });
 
   it('posts existing foreign keys as nested id objects', async () => {
