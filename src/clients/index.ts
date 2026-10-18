@@ -38,6 +38,7 @@ import { StorageClient } from './storage.js';
 import { SyncClient } from './sync.js';
 import { SpaceClient } from './space.js';
 import { HousekeepingClient } from './housekeeping.js';
+import { PantryClient } from './pantry.js';
 
 export class TandoorClient {
   private _config: TandoorConfig;
@@ -74,9 +75,14 @@ export class TandoorClient {
   private _syncs?: SyncClient;
   private _spaces?: SpaceClient;
   private _housekeeping?: HousekeepingClient;
+  private _pantry?: PantryClient;
 
   constructor(config: TandoorConfig) {
     this._config = config;
+  }
+
+  get pantry(): PantryClient {
+    return (this._pantry ??= new PantryClient(this._config));
   }
 
   get recipes(): RecipeClient {
