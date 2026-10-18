@@ -78,9 +78,10 @@ const instructions = buildInstructions(versionCheck, stashCfgAtBoot, {
 //     registered-but-disabled and revealed on demand via enable_tool_group.
 //   - "basic": skip admin/misc tool families entirely (legacy lever).
 //   - "full":  every tool visible at boot. Highest context cost.
-function resolveProfile(raw: string | undefined): 'core' | 'basic' | 'full' {
+function resolveProfile(raw: string | undefined): 'core' | 'basic' | 'full' | 'pantry' {
   const v = (raw || '').toLowerCase();
   if (v === 'basic') return 'basic';
+  if (v === 'pantry') return 'pantry';
   if (v === 'full') return 'full';
   return 'core';
 }

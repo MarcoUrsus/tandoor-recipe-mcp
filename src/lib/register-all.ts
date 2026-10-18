@@ -10,6 +10,7 @@ import { registerMealPlanTools } from '../tools/mealplan.js';
 import { registerIngredientTools } from '../tools/ingredient.js';
 import { registerShoppingTools } from '../tools/shopping.js';
 import { registerFoodUnitTools } from '../tools/foodunit.js';
+import { registerPantryTools } from '../tools/pantry.js';
 import { registerJqTools } from '../tools/jq.js';
 import { registerVersionTools } from '../tools/version.js';
 import { registerAiTools } from '../tools/ai.js';
@@ -32,10 +33,10 @@ import { registerHousekeepingTools } from '../tools/housekeeping.js';
 import { registerToolGroupTools } from '../tools/tool-groups.js';
 import { registerResources } from '../resources/index.js';
 import { registerPrompts } from '../prompts/index.js';
-import { CORE_TOOLS } from './tool-groups.js';
+import { CORE_TOOLS, findToolGroup } from './tool-groups.js';
 import type { VersionCheckResult } from './version-check.js';
 
-export type RegisterProfile = 'core' | 'basic' | 'full';
+export type RegisterProfile = 'core' | 'basic' | 'full' | 'pantry';
 
 export interface RegisterAllToolsOptions {
   /**
@@ -46,6 +47,9 @@ export interface RegisterAllToolsOptions {
    *   - "basic": skip admin/misc tool families entirely (legacy profile —
    *     retained so anyone pinned to it doesn't break, but `core` is the
    *     better lever now).
+   *   - "pantry": core read tools plus pantry-write and list_units. In HTTP mode dynamic
+   *     gating is unavailable, so this enables inventory edits without
+   *     exposing the entire 284-tool surface.
    *   - "full":  every tool registered AND enabled at boot. No gating.
    */
   profile?: RegisterProfile;
@@ -88,6 +92,7 @@ export function registerAllTools(
   registerIngredientTools(server, client);
   registerShoppingTools(server, client);
   registerFoodUnitTools(server, client);
+  registerPantryTools(server, client);
   registerJqTools(server, client);
   registerVersionTools(server, client, pkg, versionCheck);
   registerTreeSafetyTools(server, client);
@@ -119,10 +124,12 @@ export function registerAllTools(
   // Apply the core gate: disable every registered tool that isn't in
   // CORE_TOOLS. The SDK will emit tools/list_changed on the first connect;
   // tools/list responses then exclude disabled tools.
-  if (profile === 'core') {
+  if (profile === 'core' || profile === 'pantry') {
     const reg = (server as unknown as { _registeredTools?: Record<string, RegisteredToolEntry> })._registeredTools ?? {};
     for (const name of Object.keys(reg)) {
-      if (!CORE_TOOLS.has(name)) reg[name]!.disable();
+      if (!CORE_TOOLS.has(name) && !(profile === 'pantry' && (findToolGroup(name) === 'pantry-write' || name === 'list_units'))) {
+        reg[name]!.disable();
+      }
     }
   }
 }
