@@ -181,7 +181,7 @@ describe('pantry registration and feature gating', () => {
     expect(getRegisteredTool(server, 'list_pantry_entries')).toBeDefined();
   });
 
-  it('core profile hides pantry mutations; full profile exposes them', () => {
+  it('core profile hides pantry mutations; pantry profile only adds pantry writes', () => {
     _resetRegisteredNames(); _resetArraySkipLog();
     const client = new TandoorClient({ url: 'https://x.test', token: 't' });
     const opts = { pkg: { name: 'test', version: '0' },
@@ -192,9 +192,10 @@ describe('pantry registration and feature gating', () => {
     expect(coreTools['list_pantry_entries']?.enabled).toBe(true);
     expect(coreTools['create_pantry_entry']?.enabled).toBe(false);
 
-    const full = new McpServer({ name: 'full', version: '1' });
-    registerAllTools(full, client, { ...opts, profile: 'full' });
-    const fullTools = (full as any)._registeredTools as Record<string, { enabled: boolean }>;
-    expect(fullTools['create_pantry_entry']?.enabled).toBe(true);
+    const pantry = new McpServer({ name: 'pantry', version: '1' });
+    registerAllTools(pantry, client, { ...opts, profile: 'pantry' });
+    const pantryTools = (pantry as any)._registeredTools as Record<string, { enabled: boolean }>;
+    expect(pantryTools['create_pantry_entry']?.enabled).toBe(true);
+    expect(pantryTools['create_recipe']?.enabled).toBe(false);
   });
 });
