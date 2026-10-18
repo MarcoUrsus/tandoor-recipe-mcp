@@ -14,12 +14,14 @@ afterEach(() => vi.restoreAllMocks());
 
 function mockPantry(overrides: Record<string, unknown> = {}): TandoorClient {
   return { pantry: {
-    listHouseholds: vi.fn(), listLocations: vi.fn(), getLocation: vi.fn(),
+    listHouseholds: vi.fn(), getHousehold: vi.fn(), listLocations: vi.fn(), getLocation: vi.fn(),
     createLocation: vi.fn(), patchLocation: vi.fn(), deleteLocation: vi.fn(),
     listEntries: vi.fn(), getEntry: vi.fn(), createEntry: vi.fn(),
     patchEntry: vi.fn(), deleteEntry: vi.fn(), listLogs: vi.fn(), getLog: vi.fn(),
     ...overrides,
-  } } as unknown as TandoorClient;
+  },
+    foodUnits: { getFood: vi.fn(), getUnit: vi.fn() },
+  } as unknown as TandoorClient;
 }
 
 describe('PantryClient Tandoor inventory API', () => {
@@ -73,18 +75,41 @@ describe('pantry handlers', () => {
     expect(response.results[0]).not.toHaveProperty('extra');
   });
 
-  it('creates an entry with nested references and expiry', async () => {
+  it('creates an entry with hydrated nested references and expiry', async () => {
     const createEntry = vi.fn(async (body) => ({ id: 8, ...body }));
-    const client = mockPantry({ createEntry });
+    const client = mockPantry({
+      createEntry,
+      getLocation: vi.fn(async () => ({
+        id: 4, name: 'Fridge', is_freezer: false,
+        household: { id: 7, name: 'Home' },
+      })),
+    });
+    (client as any).foodUnits.getFood = vi.fn(async () => ({ id: 2, name: 'Milk' }));
+    (client as any).foodUnits.getUnit = vi.fn(async () => ({ id: 3, name: 'l' }));
     const text = await h.handleCreatePantryEntry(client, {
       inventory_location_id: 4, food_id: 2, unit_id: 3, amount: 1.5,
       expires: '2026-11-01', note: 'opened',
     });
     expect(createEntry).toHaveBeenCalledWith({
-      inventory_location: { id: 4 }, food: { id: 2 }, unit: { id: 3 },
+      inventory_location: { id: 4, name: 'Fridge', household: { id: 7, name: 'Home' }, is_freezer: false },
+      food: { id: 2, name: 'Milk' }, unit: { id: 3, name: 'l' },
       amount: 1.5, expires: '2026-11-01', note: 'opened',
     }, { signal: undefined });
     expect(text).toContain('Pantry entry created.');
+  });
+
+  it('creates a location using an existing hydrated household', async () => {
+    const createLocation = vi.fn(async (body) => ({ id: 6, ...body }));
+    const client = mockPantry({
+      getHousehold: vi.fn(async () => ({ id: 7, name: 'Home' })), createLocation,
+    });
+    const output = await h.handleCreatePantryLocation(client, {
+      name: 'Freezer', household_id: 7, is_freezer: true,
+    });
+    expect(createLocation).toHaveBeenCalledWith({
+      name: 'Freezer', household: { id: 7, name: 'Home' }, is_freezer: true,
+    }, { signal: undefined });
+    expect(output).toContain('Pantry location created.');
   });
 
   it('sets absolute stock amount=0, while rejecting empty patches', async () => {
