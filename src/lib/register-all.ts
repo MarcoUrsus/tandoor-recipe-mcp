@@ -10,6 +10,7 @@ import { registerMealPlanTools } from '../tools/mealplan.js';
 import { registerIngredientTools } from '../tools/ingredient.js';
 import { registerShoppingTools } from '../tools/shopping.js';
 import { registerFoodUnitTools } from '../tools/foodunit.js';
+import { registerPantryTools } from '../tools/pantry.js';
 import { registerJqTools } from '../tools/jq.js';
 import { registerVersionTools } from '../tools/version.js';
 import { registerAiTools } from '../tools/ai.js';
@@ -88,6 +89,7 @@ export function registerAllTools(
   registerIngredientTools(server, client);
   registerShoppingTools(server, client);
   registerFoodUnitTools(server, client);
+  registerPantryTools(server, client);
   registerJqTools(server, client);
   registerVersionTools(server, client, pkg, versionCheck);
   registerTreeSafetyTools(server, client);
