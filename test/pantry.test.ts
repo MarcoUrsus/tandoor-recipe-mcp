@@ -32,7 +32,7 @@ describe('PantryClient Tandoor inventory API', () => {
     const client = new PantryClient({ url: 'https://recipes.example.test/path/to/ui', token: 'secret' });
     await client.listEntries({ empty: true, inventory_location_id: 8, food_id: 12, page_size: 5 });
     const [url, options] = fetchMock.mock.calls[0]!;
-    expect(String(url)).toBe('https://recipes.example.test/api/inventory-entry/?empty=true&inventory_location_id=8&food_id=12&page_size=5');
+    expect(String(url)).toBe('https://recipes.example.test/api/inventory-entry/?inventory_location_id=8&food_id=12&page_size=5&empty=true');
     expect((options?.headers as Record<string,string>)['Authorization']).toBe('Bearer secret');
 
     await client.listEntries({ empty: false, page_size: 2 });
