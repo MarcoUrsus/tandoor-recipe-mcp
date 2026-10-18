@@ -32,6 +32,11 @@ export class PantryClient extends BaseClient {
       method: 'PATCH', body: JSON.stringify(body), signal: opts?.signal,
     });
   }
+  previewLocationCascade(id: number, opts?: Opts): Promise<any> {
+    return this.request(`/api/inventory-location/${id}/cascading/?cache=false&page_size=1`, {
+      signal: opts?.signal,
+    });
+  }
   deleteLocation(id: number, opts?: Opts): Promise<void> {
     return this.request(`/api/inventory-location/${id}/`, {
       method: 'DELETE', signal: opts?.signal,
