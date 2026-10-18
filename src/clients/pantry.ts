@@ -43,7 +43,12 @@ export class PantryClient extends BaseClient {
     });
   }
   listEntries(params?: PantryEntryFilters, opts?: Opts): Promise<any> {
-    return this.request('/api/inventory-entry/' + qs(params), { signal: opts?.signal });
+    // Tandoor 2.6.15 checks *presence* of the 'empty' query parameter,
+    // not its value. Omit the param entirely when false.
+    const { empty, ...filters } = params ?? {};
+    return this.request('/api/inventory-entry/' + qs({
+      ...filters, ...(empty === true ? { empty: true } : {}),
+    }), { signal: opts?.signal });
   }
   getEntry(id: number, opts?: Opts): Promise<any> {
     return this.request(`/api/inventory-entry/${id}/`, { signal: opts?.signal });
