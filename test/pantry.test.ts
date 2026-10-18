@@ -15,7 +15,7 @@ afterEach(() => vi.restoreAllMocks());
 function mockPantry(overrides: Record<string, unknown> = {}): TandoorClient {
   return { pantry: {
     listHouseholds: vi.fn(), getHousehold: vi.fn(), listLocations: vi.fn(), getLocation: vi.fn(),
-    createLocation: vi.fn(), patchLocation: vi.fn(), deleteLocation: vi.fn(),
+    createLocation: vi.fn(), patchLocation: vi.fn(), previewLocationCascade: vi.fn(), deleteLocation: vi.fn(),
     listEntries: vi.fn(), getEntry: vi.fn(), createEntry: vi.fn(),
     patchEntry: vi.fn(), deleteEntry: vi.fn(), listLogs: vi.fn(), getLog: vi.fn(),
     ...overrides,
@@ -136,10 +136,23 @@ describe('pantry handlers', () => {
   it('allows deletion of an empty location', async () => {
     const deleteLocation = vi.fn(async () => undefined);
     const client = mockPantry({
-      listEntries: vi.fn(async () => ({ count: 0, results: [] })), deleteLocation,
+      listEntries: vi.fn(async () => ({ count: 0, results: [] })),
+      previewLocationCascade: vi.fn(async () => ({ count: 0, results: [] })),
+      deleteLocation,
     });
     await h.handleDeletePantryLocation(client, { id: 3 });
     expect(deleteLocation).toHaveBeenCalledWith(3, { signal: undefined });
+  });
+
+  it('does not delete an empty location if historical logs would cascade', async () => {
+    const deleteLocation = vi.fn();
+    const client = mockPantry({
+      listEntries: vi.fn(async () => ({ count: 0, results: [] })),
+      previewLocationCascade: vi.fn(async () => ({ count: 1, results: [{ model: 'InventoryLog' }] })),
+      deleteLocation,
+    });
+    await expect(h.handleDeletePantryLocation(client, { id: 3 })).rejects.toThrow('dependent records');
+    expect(deleteLocation).not.toHaveBeenCalled();
   });
 
   it('lists history with booking type and quantity changes', async () => {
