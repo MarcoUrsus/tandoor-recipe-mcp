@@ -19,7 +19,7 @@ Six write tools (enabled in `pantry` and `full` profiles):
 - `create_pantry_location`, `update_pantry_location`, `delete_pantry_location`
 - `create_pantry_entry`, `update_pantry_entry`, `delete_pantry_entry`
 
-The `pantry` profile enables **core read tools plus these six Pantry writes**,
+The `pantry` profile enables **core read tools plus these six Pantry writes and `list_units`**,
 but leaves unrelated recipe/admin writes disabled. This is particularly useful
 for **stateless HTTP** mode where `enable_tool_group` is intentionally disabled.
 In stdio `core` mode, `enable_tool_group({group:"pantry-write"})` enables writes
@@ -51,8 +51,7 @@ the original npm package.
 
 1. Call `list_pantry_households` and `list_pantry_locations`. If needed,
    create a new location using an existing `household_id`.
-2. Resolve existing food and unit IDs with `list_foods` and `list_units`
-   (note that `list_units` is a non-core tool; see profile notes below).
+2. Resolve existing food and unit IDs with `list_foods` and `list_units`.
 3. Add an entry using `create_pantry_entry`:
    ```json
    {
@@ -81,8 +80,5 @@ Important details:
 - `delete_pantry_location` refuses to delete a location if **any** entries
   remain, including zero-amount entries; deletion otherwise cascades records.
 - Writes need Tandoor 2.6.15 or later. Older 2.x releases lack these APIs.
-- `list_units` is in the existing `units` group rather than the `core`
-  profile. For a targeted pantry client, you can obtain unit IDs from known
-  entries, or allow `list_units` explicitly in a future profile enhancement.
 - These API tools have unit/regression tests; validate them against your
   own upgraded Tandoor before using them for destructive operations.
