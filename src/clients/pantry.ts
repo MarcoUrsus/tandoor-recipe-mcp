@@ -13,6 +13,9 @@ export class PantryClient extends BaseClient {
   listHouseholds(params?: Page, opts?: Opts): Promise<any> {
     return this.request('/api/household/' + qs(params), { signal: opts?.signal });
   }
+  getHousehold(id: number, opts?: Opts): Promise<any> {
+    return this.request(`/api/household/${id}/`, { signal: opts?.signal });
+  }
   listLocations(params?: Page, opts?: Opts): Promise<any> {
     return this.request('/api/inventory-location/' + qs(params), { signal: opts?.signal });
   }
