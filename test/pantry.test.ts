@@ -26,7 +26,8 @@ function mockPantry(overrides: Record<string, unknown> = {}): TandoorClient {
 
 describe('PantryClient Tandoor inventory API', () => {
   it('uses exact inventory endpoints, filters and bearer token', async () => {
-    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(
+    // Each fetch must return a fresh Response: a response body is single-use.
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockImplementation(async () =>
       new Response(JSON.stringify({ count: 0, results: [] }), { status: 200 }),
     );
     const client = new PantryClient({ url: 'https://recipes.example.test/path/to/ui', token: 'secret' });
