@@ -98,6 +98,16 @@ The repo ships a `.claude/settings.json` that auto-allows read tools and prompts
 }
 ```
 
+## Pantry inventory (Tandoor 2.6.15+)
+
+The MCP includes 13 tools for quantity-based inventory: stock entries with
+amounts, units and expiration dates; storage locations and households; and
+read-only booking history. This is separate from the legacy `food_onhand` flag.
+
+In HTTP mode, set `TANDOOR_MCP_PROFILE=pantry` for core read tools,
+`list_units`, and six inventory write tools, without enabling unrelated
+admin and recipe writes. See [Pantry integration and usage](docs/pantry.md).
+
 ## Transport modes
 
 The server ships two transports. Default is `stdio`; opt in to HTTP with an env var.
