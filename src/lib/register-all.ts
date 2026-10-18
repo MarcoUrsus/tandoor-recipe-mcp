@@ -47,7 +47,7 @@ export interface RegisterAllToolsOptions {
    *   - "basic": skip admin/misc tool families entirely (legacy profile —
    *     retained so anyone pinned to it doesn't break, but `core` is the
    *     better lever now).
-   *   - "pantry": core read tools plus pantry-write. In HTTP mode dynamic
+   *   - "pantry": core read tools plus pantry-write and list_units. In HTTP mode dynamic
    *     gating is unavailable, so this enables inventory edits without
    *     exposing the entire 284-tool surface.
    *   - "full":  every tool registered AND enabled at boot. No gating.
@@ -127,7 +127,7 @@ export function registerAllTools(
   if (profile === 'core' || profile === 'pantry') {
     const reg = (server as unknown as { _registeredTools?: Record<string, RegisteredToolEntry> })._registeredTools ?? {};
     for (const name of Object.keys(reg)) {
-      if (!CORE_TOOLS.has(name) && !(profile === 'pantry' && findToolGroup(name) === 'pantry-write')) {
+      if (!CORE_TOOLS.has(name) && !(profile === 'pantry' && (findToolGroup(name) === 'pantry-write' || name === 'list_units'))) {
         reg[name]!.disable();
       }
     }
