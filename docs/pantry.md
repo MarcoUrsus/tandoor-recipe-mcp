@@ -78,7 +78,7 @@ Important details:
 - `delete_pantry_entry` permanently deletes its booking logs. Prefer
   setting `amount:0` when consuming all stock.
 - `delete_pantry_location` refuses to delete a location if **any** entries
-  remain, including zero-amount entries; deletion otherwise cascades records.
+  remain, including zero-amount entries, or if historical movement logs would cascade.
 - Writes need Tandoor 2.6.15 or later. Older 2.x releases lack these APIs.
 - These API tools have unit/regression tests; validate them against your
   own upgraded Tandoor before using them for destructive operations.
