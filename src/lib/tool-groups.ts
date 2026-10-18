@@ -53,6 +53,15 @@ export const CORE_TOOLS: ReadonlySet<string> = new Set([
 
   // Space read.
   'get_current_space',
+
+  // Tandoor 2.6 inventory reads (quantity-based pantry, not food_onhand).
+  'list_pantry_households',
+  'list_pantry_locations',
+  'get_pantry_location',
+  'list_pantry_entries',
+  'get_pantry_entry',
+  'list_pantry_logs',
+  'get_pantry_log',
 ]);
 
 export interface ToolGroup {
@@ -68,6 +77,14 @@ export interface ToolGroup {
  * Tandoor module names.
  */
 export const TOOL_GROUPS: ReadonlyArray<ToolGroup> = [
+  {
+    name: 'pantry-write',
+    description: 'Create, update and delete pantry locations and inventory entries; amount updates set absolute stock.',
+    tools: [
+      'create_pantry_location', 'update_pantry_location', 'delete_pantry_location',
+      'create_pantry_entry', 'update_pantry_entry', 'delete_pantry_entry',
+    ],
+  },
   {
     name: 'recipe-write',
     description: 'Create / update / delete recipes, import from URL, upload images, batch updates.',
