@@ -251,3 +251,4 @@ export * from './storage.js';
 export * from './sync.js';
 export * from './space.js';
 export * from './housekeeping.js';
+export * from './pantry.js';
