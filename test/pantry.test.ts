@@ -196,6 +196,7 @@ describe('pantry registration and feature gating', () => {
     registerAllTools(pantry, client, { ...opts, profile: 'pantry' });
     const pantryTools = (pantry as any)._registeredTools as Record<string, { enabled: boolean }>;
     expect(pantryTools['create_pantry_entry']?.enabled).toBe(true);
+    expect(pantryTools['list_units']?.enabled).toBe(true);
     expect(pantryTools['create_recipe']?.enabled).toBe(false);
   });
 });
