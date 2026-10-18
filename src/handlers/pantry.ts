@@ -61,8 +61,12 @@ export async function handleGetPantryLocation(
 export async function handleCreatePantryLocation(
   client: TandoorClient, args: CreatePantryLocationArgs, ctx?: HandlerContext,
 ): Promise<string> {
+  // Tandoor's WritableNestedModelSerializer validates required nested fields
+  // before resolving existing foreign keys. ID alone is insufficient on POST.
+  const household = await client.pantry.getHousehold(args.household_id, { signal: ctx?.signal });
   const body = {
-    name: args.name, household: { id: args.household_id },
+    name: args.name,
+    household: { id: household.id, name: household.name },
     ...(args.is_freezer !== undefined ? { is_freezer: args.is_freezer } : {}),
   };
   const result = await client.pantry.createLocation(body, { signal: ctx?.signal });
@@ -109,11 +113,26 @@ export async function handleGetPantryEntry(
 export async function handleCreatePantryEntry(
   client: TandoorClient, args: CreatePantryEntryArgs, ctx?: HandlerContext,
 ): Promise<string> {
-  // DRF writable-nested serializers accept existing IDs wrapped in objects.
+  // POST validates required fields of each nested serializer before
+  // saving references. Hydrate names plus nested household, as Tandoor's
+  // own frontend does, but avoid sending unrelated writable fields.
+  const [location, food, unit] = await Promise.all([
+    client.pantry.getLocation(args.inventory_location_id, { signal: ctx?.signal }),
+    client.foodUnits.getFood(args.food_id),
+    client.foodUnits.getUnit(args.unit_id),
+  ]);
+  const household = location.household;
+  if (!household?.id || !household?.name) {
+    throw new Error('Inventory location has no readable household reference.');
+  }
   const body: Record<string, unknown> = {
-    inventory_location: { id: args.inventory_location_id },
-    food: { id: args.food_id },
-    unit: { id: args.unit_id },
+    inventory_location: {
+      id: location.id, name: location.name,
+      household: { id: household.id, name: household.name },
+      is_freezer: location.is_freezer ?? false,
+    },
+    food: { id: food.id, name: food.name },
+    unit: { id: unit.id, name: unit.name },
     amount: args.amount,
   };
   for (const key of ['expires', 'sub_location', 'code', 'note'] as const) {
