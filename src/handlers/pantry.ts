@@ -93,6 +93,11 @@ export async function handleDeletePantryLocation(
   if (Number(page?.count ?? page?.results?.length ?? 0) > 0) {
     throw new Error('Pantry location is not empty. Move or delete its entries before deleting this location.');
   }
+  // Even an empty location may still be referenced by movement history.
+  const cascade = await client.pantry.previewLocationCascade(args.id, { signal: ctx?.signal });
+  if (Number(cascade?.count ?? cascade?.results?.length ?? 0) > 0) {
+    throw new Error('Pantry location has dependent records (such as movement logs). Refusing cascading deletion.');
+  }
   await client.pantry.deleteLocation(args.id, { signal: ctx?.signal });
   return `Pantry location ${args.id} deleted.`;
 }
